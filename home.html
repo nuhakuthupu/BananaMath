@@ -38,9 +38,40 @@
         </div>
     </div>
 
+    <button id="soundToggle">🔊 Sound ON</button>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+        import { initSounds, playClick, toggleSound, isSoundEnabled } from "./sound.js";
+
+        initSounds();
+        
+        const toggleBtn = document.getElementById("soundToggle");
+        toggleBtn.addEventListener("click", () => {
+            const enabled = toggleSound();
+            toggleBtn.textContent = enabled ? "🔊 Sound ON" : "🔇 Sound OFF";
+        });
+        toggleBtn.textContent = isSoundEnabled() ? "🔊 Sound ON" : "🔇 Sound OFF";
+
+        // Click sound
+        function addClickSound() {
+            document.querySelectorAll("button, a").forEach(el => {
+                el.addEventListener("click", (e) => {
+                    playClick();
+
+                    if (el.tagName.toLowerCase() === "a" && el.href) {
+                        e.preventDefault();
+                        setTimeout(() => {
+                            window.location.href = el.href;
+                        }, 100);
+                    }
+                });
+            });
+        }
+
+        window.addEventListener("DOMContentLoaded", addClickSound);
 
         // Firebase configuration
         const firebaseConfig = {
@@ -90,18 +121,18 @@
         logoutBtn.addEventListener("click", async (e) => {
             e.preventDefault();
 
-            // Sign out first
-            await signOut(auth);
+            playClick();
 
-            // Save toast data
-            localStorage.setItem(
-            "toast",
-            JSON.stringify({ icon: "success", title: "Logged out successfully!" })
-            );
-
-            // Redirect after sign out
-            window.location.href = "index.html";
+            setTimeout(async () => {
+                await signOut(auth);
+                localStorage.setItem(
+                    "toast",
+                    JSON.stringify({ icon: "success", title: "Logged out successfully!" })
+                );
+                window.location.href = "index.html";
+            }, 100);
         });
     </script>
+    
 </body>
 </html>

@@ -17,10 +17,38 @@
         </div>
     </div>
 
+    <button id="soundToggle">🔊 Sound ON</button>
+
     <script type="module">
+        import { initSounds, playClick, toggleSound, isSoundEnabled } from "./sound.js";
         import { auth, db } from "./firebase.js";
         import { collection, query, orderBy, limit, getDocs } 
         from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+        initSounds();
+
+        const toggleBtn = document.getElementById("soundToggle");
+        toggleBtn.addEventListener("click", () => {
+            const enabled = toggleSound();
+            toggleBtn.textContent = enabled ? "🔊 Sound ON" : "🔇 Sound OFF";
+        });
+        toggleBtn.textContent = isSoundEnabled() ? "🔊 Sound ON" : "🔇 Sound OFF";
+
+        // Click sound
+        function addClickSoundWithNavigation(selector, href = null) {
+            document.querySelectorAll(selector).forEach(el => {
+                el.addEventListener("click", (e) => {
+                    playClick();
+                    if (href) {
+                        e.preventDefault();
+                        setTimeout(() => window.location.href = href, 150);
+                    }
+                });
+            });
+        }
+
+        addClickSoundWithNavigation("#homeBtn", "home.html");
+        addClickSoundWithNavigation(".btn.gold", "game.html");
 
         function capitalizeFirst(str) {
             if (!str) return "";
@@ -58,11 +86,8 @@
             document.getElementById("board").innerHTML = html;
         }
 
-    loadBoard();
+        loadBoard();
 
-    document.getElementById("homeBtn").addEventListener("click", () => {
-        window.location.href = "home.html";
-    });
     </script>
 </body>
 </html>

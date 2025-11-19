@@ -8,16 +8,51 @@ const Toast = Swal.mixin({
     timerProgressBar: true
 });
 
+let bgMusic;
+let level = 1;
+let globalTime = 100;
+let timerText, levelText, resultText;
+let currentSolution = null;
+let isGameOver = false;
+let puzzleImg;
+let timerContainer, timerCircle;
+let timerRunning = true;
+
+const config = {
+    type: Phaser.AUTO,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    parent: 'game-container',
+    dom: { createContainer: true },
+    scene: { preload, create, update },
+    transparent: true
+};
+
+let game = new Phaser.Game(config);
+
+async function saveScoreToFirebase(timeUsed) {
+    try {
+        await saveScore(Number(timeUsed));
+        window.location.href = "leaderboard.html";
+    } catch (err) {
+        console.error("Save failed", err);
+        Toast.fire({ icon: "error", title: "Failed to save score!" });
+    }
+}
+
+// Show win/end dialog
 async function showEndDialog({ title = '', text = '', icon = 'info', timeUsed = null }) {
     isGameOver = true;
     timerRunning = false;
+
+    if (bgMusic && bgMusic.isPlaying) bgMusic.stop();
 
     const result = await Swal.fire({
         title,
         text,
         icon,
-        showCancelButton: true,   // maps to Exit to Home 
-        showDenyButton: true,     // maps to Leaderboard
+        showCancelButton: true,   // Exit to Home
+        showDenyButton: true,     // Leaderboard
         confirmButtonText: 'Replay',
         denyButtonText: 'Leaderboard',
         cancelButtonText: 'Exit to Home',
@@ -32,56 +67,21 @@ async function showEndDialog({ title = '', text = '', icon = 'info', timeUsed = 
         buttonsStyling: false
     });
 
-    // result handling
     if (result.isConfirmed) {
-        resetGame(game.scene.scenes[0]); //replay
+        resetGame(game.scene.scenes[0]);
         return;
     }
 
     if (result.isDenied) {
-        if (timeUsed !== null) {
-            await saveScoreToFirebase(timeUsed); 
-        } else {
-            window.location.href = "leaderboard.html";
-        }
+        if (timeUsed !== null) await saveScoreToFirebase(timeUsed);
+        else window.location.href = "leaderboard.html";
         return;
     }
+
     window.location.href = "home.html";
 }
 
-const config = {
-    type: Phaser.AUTO,
-    width: window.innerWidth,
-    height: window.innerHeight,
-    parent: 'game-container',
-    dom: { createContainer: true },
-    scene: { preload, create, update },
-    transparent: true
-};
-
-let game = new Phaser.Game(config);
-
-let level = 1;
-let globalTime = 100;
-let timerText, levelText, resultText;
-let currentSolution = null;
-let isGameOver = false;
-let puzzleImg;
-let timerContainer, timerCircle;
-let timerRunning = true;
-
-// Save score to  Firebase then Leaderboard
-async function saveScoreToFirebase(timeUsed) {
-    try {
-        await saveScore(Number(timeUsed));
-        window.location.href = "leaderboard.html";
-    } catch (err) {
-        console.error("Save failed", err);
-        Toast.fire({ icon: "error", title: "Failed to save score!" });
-    }
-}
-
-// Win toast
+// Show win toast
 function showWinToast(timeUsed) {
     showEndDialog({
         title: `🎉 You Wonnn!!!`,
@@ -91,14 +91,20 @@ function showWinToast(timeUsed) {
     });
 }
 
-// Preload
+// Phaser
+
+// Preload assets
 function preload() {
     this.load.image('background', 'assets/banana_bg.jpg');
     this.load.image('levelBadge', 'assets/level_bg.png');
     this.load.image('timerBg', 'assets/timer_bg.png');
+
+    this.load.audio('bgMusic', 'assets/bg_music.mp3');
+    this.load.audio('clickSound', 'assets/click.mp3');
+    this.load.audio('winSound', 'assets/win.mp3');
+    this.load.audio('loseSound', 'assets/lose.mp3');
 }
 
-// Phaser create
 function create() {
     const scene = this;
 
@@ -106,49 +112,34 @@ function create() {
     this.add.image(window.innerWidth / 2, window.innerHeight / 2, 'background')
         .setDisplaySize(window.innerWidth, window.innerHeight);
 
-    // Level badge image
-    const badge = this.add.image(190, 60, 'levelBadge');
-    badge.setScale(0.6);
-
-    // Level text
-    levelText = this.add.text(badge.x + 45, badge.y + 10, level, {
+    // Level badge
+    const badge = this.add.image(190, 60, 'levelBadge').setScale(0.6);
+    levelText = this.add.text(badge.x + 45, badge.y + 10, `LEVEL: ${level}`, {
         fontSize: '42px',
         color: '#FFD700',
         fontStyle: 'bold',
         stroke: '#000',
         strokeThickness: 6,
-        fontFamily: 'Comic Sans MS', 
+        fontFamily: 'Comic Sans MS'
     }).setOrigin(0.5);
 
-    // Timer Container
+    // Timer container
     timerContainer = this.add.container(window.innerWidth - 150, 100);
-
-    // White background circle 
     const timerWhiteBg = this.add.circle(0, 20, 80, 0xFFFFFF);
-    timerContainer.add(timerWhiteBg);
-
-    // Background image
     const timerBgImg = this.add.image(0, 20, 'timerBg').setScale(0.55);
-
-    // Timer progress
     timerCircle = this.add.graphics();
     timerCircle.x = 5;
     timerCircle.y = 20;
-
-    // Timer text
     timerText = this.add.text(5, 20, globalTime, {
-        fontSize: '60px',          
-        color: '#ff0000ff',          
+        fontSize: '60px',
+        color: '#ff0000',
         fontStyle: 'bold',
-        padding: { x: 10, y: 5 },
         align: 'center',
         fontFamily: 'Arial'
     }).setOrigin(0.5);
+    timerContainer.add([timerWhiteBg, timerBgImg, timerCircle, timerText]);
 
-    timerContainer.add([timerBgImg, timerCircle, timerText]);
-
-
-    // Result
+    // Result text
     resultText = this.add.text(window.innerWidth / 2, window.innerHeight - 140, '', {
         fontSize: '28px',
         color: '#FFF',
@@ -156,12 +147,16 @@ function create() {
         strokeThickness: 4
     }).setOrigin(0.5);
 
+    // Bg music
+    bgMusic = this.sound.add('bgMusic', { loop: true, volume: 0.4 });
+    bgMusic.play();
+
+    // Keypad & level
     createKeypad(scene);
     startLevel(scene, level);
     drawTimerCircle();
 }
 
-// Timer
 function update(time, delta) {
     if (!isGameOver && timerRunning && globalTime > 0) {
         globalTime -= delta / 1000;
@@ -179,7 +174,6 @@ function update(time, delta) {
     }
 }
 
-// Timer circle
 function drawTimerCircle() {
     const progress = Math.max(globalTime / 100, 0);
     const angle = Phaser.Math.DegToRad(360 * progress);
@@ -189,10 +183,11 @@ function drawTimerCircle() {
     if (progress < 0.5) color = 0xffff00;
     if (progress < 0.25) color = 0xff0000;
 
-    timerCircle.lineStyle(10, color, 1).beginPath();
-    timerCircle.arc(0, 0, 55, -Math.PI/2, angle - Math.PI/2, false).strokePath();
+    timerCircle.lineStyle(10, color, 1);
+    timerCircle.beginPath();
+    timerCircle.arc(0, 0, 55, -Math.PI / 2, angle - Math.PI / 2, false);
+    timerCircle.strokePath();
 }
-
 
 function startLevel(scene, lvl) {
     level = lvl;
@@ -209,10 +204,12 @@ function startLevel(scene, lvl) {
             currentSolution = Number(p.solution);
 
             const img = document.createElement("img");
-            img.src = p.question; img.style.width="500px"; img.style.height="500px";
+            img.src = p.question;
+            img.style.width = "500px";
+            img.style.height = "500px";
             img.onload = () => {
-                puzzleImg = scene.add.dom(window.innerWidth/2, window.innerHeight/2-60, img).setAlpha(0);
-                scene.tweens.add({ targets:puzzleImg, alpha:1, duration:400 });
+                puzzleImg = scene.add.dom(window.innerWidth / 2, window.innerHeight / 2 - 60, img).setAlpha(0);
+                scene.tweens.add({ targets: puzzleImg, alpha: 1, duration: 400 });
             };
         })
         .catch(() => resultText.setText("⚠️ Load Failed"));
@@ -220,7 +217,6 @@ function startLevel(scene, lvl) {
     drawTimerCircle();
 }
 
-// Keypad
 function createKeypad(scene) {
     const container = document.createElement("div");
     container.classList.add("keypad-container");
@@ -237,13 +233,17 @@ function createKeypad(scene) {
 }
 
 function handleAnswer(scene, num) {
+    scene.sound.play('clickSound');
+
     if (Number(num) === currentSolution) {
         if (level >= 5) {
             const used = Number((100 - globalTime).toFixed(2));
+            scene.sound.play('winSound');
             showWinToast(used);
-        } else setTimeout(() => startLevel(scene, level+1), 400);
+        } else setTimeout(() => startLevel(scene, level + 1), 400);
     } else {
-        Toast.fire({ icon:'error', title:' Wrong answer!' });
+        scene.sound.play('loseSound');
+        Toast.fire({ icon: 'error', title: 'Wrong answer!' });
         showEndDialog({
             title: 'Wrong answer!',
             text: 'That answer is incorrect. What would you like to do next?',
@@ -252,14 +252,16 @@ function handleAnswer(scene, num) {
     }
 }
 
-// Reset
 function resetGame(scene) {
-    globalTime = 100; level = 1;
-    isGameOver = false; timerRunning = true;
+    globalTime = 100;
+    level = 1;
+    isGameOver = false;
+    timerRunning = true;
     startLevel(scene, level);
+
+    if (bgMusic) bgMusic.play();
 }
 
-// Resize
 window.addEventListener("resize", () => {
     game.scale.resize(window.innerWidth, window.innerHeight);
 });
