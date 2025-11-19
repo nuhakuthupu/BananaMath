@@ -1,3 +1,19 @@
+import { initSounds, playClick, toggleSound, isSoundEnabled } from "./sound.js"; 
+
+initSounds();
+
+// Click sound
+const toggleBtn = document.getElementById("soundToggle");
+toggleBtn.addEventListener("click", () => {
+    const enabled = toggleSound();
+    toggleBtn.textContent = enabled ? "🔊 Sound ON" : "🔇 Sound OFF";
+});
+toggleBtn.textContent = isSoundEnabled() ? "🔊 Sound ON" : "🔇 Sound OFF";
+
+document.querySelectorAll("button, a").forEach(el => {
+    el.addEventListener("click", playClick);
+});
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 import {

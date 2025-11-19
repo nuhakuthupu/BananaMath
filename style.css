@@ -534,3 +534,24 @@ button:hover { opacity: 0.5; }
 }
 
 
+#soundToggle {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background-color: rgba(0,0,0,0.6);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 15px;
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 1000;
+    width: auto;     
+    display: inline-block;
+    text-align: center;
+}
+
+#soundToggle:hover {
+    background-color: rgba(0,0,0,0.8);
+}
+

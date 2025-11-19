@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title>How to Play</title>
     <link rel="stylesheet" href="style.css">
+    <script type="module" src="session.js"></script>
+
 </head>
 
 <body>
@@ -28,14 +30,39 @@
         </div>
     </div>
 
-    <script>
-        document.getElementById("startGameBtn").onclick = () => {
-            window.location.href = "game.html";
-        };
+     <button id="soundToggle">🔊 Sound ON</button>
 
-        document.getElementById("leaderboardBtn").onclick = () => {
-            window.location.href = "leaderboard.html";
-        };
+    <script type="module">
+        import { initSounds, playClick, toggleSound, isSoundEnabled } from "./sound.js";
+
+        initSounds();
+
+        const toggleBtn = document.getElementById("soundToggle");
+        toggleBtn.addEventListener("click", () => {
+            const enabled = toggleSound();
+            toggleBtn.textContent = enabled ? "🔊 Sound ON" : "🔇 Sound OFF";
+        });
+        toggleBtn.textContent = isSoundEnabled() ? "🔊 Sound ON" : "🔇 Sound OFF";
+
+        function addClickSoundWithNavigation(selector, href = null) {
+            const el = document.querySelector(selector);
+            if (!el) return;
+
+            el.addEventListener("click", (e) => {
+                playClick();
+
+                if (href) {
+                    e.preventDefault();
+                    setTimeout(() => {
+                        window.location.href = href;
+                    }, 150);
+                }
+            });
+        }
+
+        addClickSoundWithNavigation("#startGameBtn", "game.html");
+        addClickSoundWithNavigation("#leaderboardBtn", "leaderboard.html");
+
     </script>
 
 </body>
